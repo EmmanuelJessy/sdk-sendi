@@ -12,7 +12,7 @@ class SendiAPI {
 
     this.client = new SendiClient({
       apiKey,
-      baseURL: config.baseURL || 'http://localhost:5001/api/v1',
+      baseURL: config.baseURL || 'https://sendi-backend.onrender.com/api/v1',
       timeout: config.timeout || 30000,
       ...config
     });

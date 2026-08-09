@@ -6,7 +6,7 @@ import { SendiAPIError } from './errors.js';
 export class SendiClient {
   constructor(config = {}) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL || 'http://localhost:5001/api/v1';
+    this.baseURL = config.baseURL || 'https://sendi-backend.onrender.com/api/v1';
     this.timeout = config.timeout || 30000;
     this.headers = config.headers || {};
   }
