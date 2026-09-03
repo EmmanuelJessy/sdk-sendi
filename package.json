@@ -1,22 +1,58 @@
 {
   "name": "sendi-api",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "type": "module",
   "description": "SDK officiel pour l'API Sendi - Livraison en Afrique",
   "main": "src/index.js",
+  "types": "types/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./orders": "./src/resources/orders.js",
-    "./commercant": "./src/resources/commercant.js",
-    "./agence": "./src/resources/agence.js"
+    ".": {
+      "import": "./src/index.js",
+      "require": "./dist/sendi-api.cjs.js",
+      "types": "./types/index.d.ts"
+    },
+    "./orders": {
+      "import": "./src/resources/orders.js",
+      "require": "./dist/resources/orders.cjs.js"
+    },
+    "./commercant": {
+      "import": "./src/resources/commercant.js",
+      "require": "./dist/resources/commercant.cjs.js"
+    },
+    "./agence": {
+      "import": "./src/resources/agence.js",
+      "require": "./dist/resources/agence.cjs.js"
+    },
+    "./delivery": {
+      "import": "./src/resources/delivery.js",
+      "require": "./dist/resources/delivery.cjs.js"
+    },
+    "./stats": {
+      "import": "./src/resources/stats.js",
+      "require": "./dist/resources/stats.cjs.js"
+    },
+    "./webhook": {
+      "import": "./src/resources/webhook.js",
+      "require": "./dist/resources/webhook.cjs.js"
+    }
   },
   "files": [
     "src",
+    "dist",
+    "types",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "npm run build:clean && node scripts/build.js && rollup -c",
+    "build:clean": "rm -rf dist",
+    "build:types": "tsc --emitDeclarationOnly",
+    "prepublishOnly": "npm run build && npm run build:types",
+    "dev": "nodemon --exec node examples/basic.js",
+    "lint": "eslint src/**/*.js",
+    "format": "prettier --write src/**/*.js examples/**/*.js"
   },
   "keywords": [
     "sendi",
@@ -25,7 +61,10 @@
     "africa",
     "livraison",
     "sdk",
-    "logistics"
+    "logistics",
+    "cote-divoire",
+    "senegal",
+    "cameroon"
   ],
   "author": {
     "name": "Sendi API Team",
@@ -44,7 +83,25 @@
   "dependencies": {
     "axios": "^1.6.0"
   },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-terser": "^1.0.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "nodemon": "^3.0.0",
+    "prettier": "^3.0.0",
+    "rollup": "^3.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
   "engines": {
     "node": ">=14.0.0"
-  }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
 }

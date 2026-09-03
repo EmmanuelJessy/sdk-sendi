@@ -175,7 +175,7 @@ Le client peut être configuré avec plusieurs options :
 const api = new SendiAPI(
   'sk_live_votre_cle_api',
   {
-    baseURL: 'https://sendi-backend.onrender.com/api/v1',
+    baseURL: 'https://api.sendi-api.com/api/v1',
     timeout: 30000,
     maxRetries: 3,
     retryDelay: 1000,
@@ -217,7 +217,7 @@ const api = new SendiAPI(
 const api = new SendiAPI(
   'sk_live_votre_cle',
   {
-    baseURL: 'https://sendi-backend.onrender.com/api/v1'
+    baseURL: 'https://api.sendi-api.com/api/v1'
   }
 );
 ```
