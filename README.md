@@ -226,8 +226,8 @@ const api = new SendiAPI(
 
 ## Documentation
 
-* Documentation complète : https://sendi.com/docs
-* API Reference : https://sendi.com/docs
+* Documentation complète : https://sendi-api.com/docs
+* API Reference : https://sendi-api.com/docs
 * npm Package : https://www.npmjs.com/
 * GitHub Repository : https://github.com/EmmanuelJessy/sdk-sendi
 
@@ -242,7 +242,7 @@ Avant d'utiliser le SDK, assurez-vous de disposer de :
 
 Vous pouvez obtenir votre clé API sur :
 
-https://sendi.com
+https://sendi-api.com
 
 ---
 
@@ -313,9 +313,9 @@ Créez ensuite une Pull Request afin de proposer vos modifications.
 
 Pour toute question ou problème :
 
-* Email : [support@sendi.com](mailto:support@sendi.com)
-* Site web : https://sendi.com
-* Documentation : https://sendi.com/docs
+* Email : [support@sendi-api.com](mailto:support@sendi-api.com)
+* Site web : https://sendi-api.com
+* Documentation : https://sendi-api.com/docs
 * Issues GitHub : https://github.com/EmmanuelJessy/sdk-sendi
 * Communauté Discord : https://discord.gg/sendi
 

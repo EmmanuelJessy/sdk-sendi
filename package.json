@@ -3,38 +3,48 @@
   "version": "3.0.1",
   "type": "module",
   "description": "SDK officiel pour l'API Sendi - Livraison en Afrique",
-  "main": "src/index.js",
+  "main": "dist/sendi-api.cjs.js",
+  "module": "dist/sendi-api.esm.js",
+  "browser": "dist/sendi-api.umd.js",
   "types": "types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src/index.js",
+      "types": "./types/index.d.ts",
+      "import": "./dist/sendi-api.esm.js",
       "require": "./dist/sendi-api.cjs.js",
-      "types": "./types/index.d.ts"
+      "default": "./dist/sendi-api.esm.js"
     },
     "./orders": {
+      "types": "./types/resources/orders.d.ts",
       "import": "./src/resources/orders.js",
-      "require": "./dist/resources/orders.cjs.js"
+      "require": "./dist/sendi-api.cjs.js"
     },
     "./commercant": {
+      "types": "./types/resources/commercant.d.ts",
       "import": "./src/resources/commercant.js",
-      "require": "./dist/resources/commercant.cjs.js"
+      "require": "./dist/sendi-api.cjs.js"
     },
     "./agence": {
+      "types": "./types/resources/agence.d.ts",
       "import": "./src/resources/agence.js",
-      "require": "./dist/resources/agence.cjs.js"
+      "require": "./dist/sendi-api.cjs.js"
     },
     "./delivery": {
+      "types": "./types/resources/delivery.d.ts",
       "import": "./src/resources/delivery.js",
-      "require": "./dist/resources/delivery.cjs.js"
+      "require": "./dist/sendi-api.cjs.js"
     },
     "./stats": {
+      "types": "./types/resources/stats.d.ts",
       "import": "./src/resources/stats.js",
-      "require": "./dist/resources/stats.cjs.js"
+      "require": "./dist/sendi-api.cjs.js"
     },
     "./webhook": {
+      "types": "./types/resources/webhook.d.ts",
       "import": "./src/resources/webhook.js",
-      "require": "./dist/resources/webhook.cjs.js"
-    }
+      "require": "./dist/sendi-api.cjs.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "src",
@@ -46,13 +56,16 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "build": "npm run build:clean && node scripts/build.js && rollup -c",
     "build:clean": "rm -rf dist",
     "build:types": "tsc --emitDeclarationOnly",
-    "prepublishOnly": "npm run build && npm run build:types",
+    "prepublishOnly": "npm run test && npm run build && npm run build:types",
     "dev": "nodemon --exec node examples/basic.js",
     "lint": "eslint src/**/*.js",
-    "format": "prettier --write src/**/*.js examples/**/*.js"
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write src/**/*.js examples/**/*.js",
+    "security": "npm audit --audit-level=high"
   },
   "keywords": [
     "sendi",
@@ -64,7 +77,12 @@
     "logistics",
     "cote-divoire",
     "senegal",
-    "cameroon"
+    "cameroon",
+    "marketplace",
+    "ecommerce",
+    "shipping",
+    "livraison-afrique",
+    "api-livraison"
   ],
   "author": {
     "name": "Sendi API Team",
@@ -74,7 +92,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/EmmanuelJessy/sdk-sendi.git"
+    "url": "git+https://github.com/EmmanuelJessy/sdk-sendi.git"
   },
   "homepage": "https://github.com/EmmanuelJessy/sdk-sendi#readme",
   "bugs": {
@@ -103,5 +121,9 @@
     "> 1%",
     "last 2 versions",
     "not dead"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

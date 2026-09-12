@@ -1,4 +1,5 @@
 import { SendiAPIError } from '../errors.js';
+
 // src/resources/delivery.js
 /**
  * Ressource de gestion des livraisons

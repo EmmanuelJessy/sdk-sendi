@@ -10,8 +10,6 @@ const __dirname = path.dirname(__filename);
  * Script de build du SDK
  */
 async function build() {
-  console.log('\n🚀 Build du SDK SendiAPI...\n');
-
   // Vérifier que le dossier src existe
   const srcDir = path.join(__dirname, '..', 'src');
   if (!fs.existsSync(srcDir)) {
@@ -23,11 +21,9 @@ async function build() {
   const distDir = path.join(__dirname, '..', 'dist');
   if (!fs.existsSync(distDir)) {
     fs.mkdirSync(distDir, { recursive: true });
-    console.log('✅ Dossier dist créé');
-  }
+    }
 
-  console.log('✅ Build terminé avec succès !\n');
-}
+  }
 
 // Exécution
 build().catch(console.error);
