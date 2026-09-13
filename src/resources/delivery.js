@@ -1,10 +1,6 @@
 // src/resources/delivery.js
 import { SendiAPIError } from '../errors.js';
 
-/**
- * Ressource de gestion des livraisons
- * Correspond aux fonctionnalités du plugin WordPress SendiAPI
- */
 export class DeliveryResource {
   constructor(client) {
     this.client = client;
@@ -12,15 +8,14 @@ export class DeliveryResource {
 
   /**
    * Récupérer la configuration de livraison
-   * Utilise: GET /delivery/config (existe dans ton backend)
+   * Retourne: { allowedCountries, interCountryEnabled, communes, ... }
    */
   async getConfig() {
     return this.client.get('/delivery/config');
   }
 
   /**
-   * Récupérer les communes
-   * Utilise: GET /communes (existe dans ton backend)
+   * Récupérer TOUTES les communes (filtrées par pays autorisés)
    */
   async getCommunes(params = {}) {
     const query = new URLSearchParams();
@@ -31,10 +26,68 @@ export class DeliveryResource {
   }
 
   /**
-   * Récupérer les agences disponibles avec leurs prix
-   * Utilise: GET /agences/available (existe dans ton backend)
+   * ✅ Récupérer les communes filtrées selon la config
    * 
-   * ⚠️ C'est CETTE route que ton plugin WordPress utilise !
+   * Logique (comme le plugin WordPress) :
+   * - Si inter_country DÉSACTIVÉ → communes du pays du commerçant
+   * - Si inter_country ACTIVÉ → communes de tous les pays autorisés
+   */
+  async getFilteredCommunes(options = {}) {
+    const {
+      merchantCountry = 'CI',
+      interCountryEnabled = false,
+      allowedCountries = ['CI']
+    } = options;
+
+    try {
+      // Récupérer toutes les communes
+      const response = await this.getCommunes();
+      const allCommunes = response.communes || [];
+
+      // ✅ Filtrer selon la config (COMME LE PLUGIN)
+      let filtered = [];
+
+      if (!interCountryEnabled) {
+        // Ne garder que les communes du pays du commerçant
+        filtered = allCommunes.filter(c => {
+          const countryCode = c.countryCode || c.country || 'CI';
+          return countryCode === merchantCountry;
+        });
+      } else {
+        // Garder les communes des pays autorisés
+        filtered = allCommunes.filter(c => {
+          const countryCode = c.countryCode || c.country || 'CI';
+          return allowedCountries.includes(countryCode);
+        });
+      }
+
+      // Si aucune commune filtrée, retourner toutes
+      if (filtered.length === 0) {
+        filtered = allCommunes;
+      }
+
+      return {
+        success: true,
+        communes: filtered,
+        total: filtered.length,
+        merchantCountry,
+        interCountryEnabled,
+        allowedCountries
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur filtrage communes:', error.message);
+      return {
+        success: false,
+        communes: [],
+        total: 0,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Récupérer les agences disponibles avec leurs prix
    */
   async getAvailableAgences(commune, options = {}) {
     const params = new URLSearchParams({ commune });
@@ -46,9 +99,7 @@ export class DeliveryResource {
 
   /**
    * Calculer le prix de livraison
-   * 
-   * ⚠️ IMPORTANT: Utilise /agences/available (comme le plugin WordPress)
-   * car /delivery/price n'existe PAS dans ton backend.
+   * Utilise /agences/available (comme le plugin)
    */
   async calculatePrice(pickupCommune, clientCommune, options = {}) {
     if (!pickupCommune || !clientCommune) {
@@ -91,7 +142,7 @@ export class DeliveryResource {
       };
     }
 
-    // ✅ 3. Sinon, utiliser /agences/available (COMME LE PLUGIN)
+    // ✅ 3. Sinon, utiliser /agences/available
     try {
       const response = await this.getAvailableAgences(pickupCommune, {
         pickupCommune,
@@ -99,16 +150,13 @@ export class DeliveryResource {
         countryCode
       });
 
-      // ✅ Si des agences sont disponibles
       if (response.agences && response.agences.length > 0) {
-        // Prendre la meilleure agence (celle qui couvre la commune)
         const bestAgence = response.agences.find(a => a.coversCommune) || response.agences[0];
-        
         const price = bestAgence.price || (isSameCommune ? 1500 : 2000);
 
         return {
           success: true,
-          price: price,
+          price,
           isFree: false,
           currency,
           isSameCommune,
@@ -123,7 +171,6 @@ export class DeliveryResource {
         };
       }
 
-      // ✅ Aucune agence → prix par défaut
       return {
         success: true,
         price: isSameCommune ? 1500 : 2000,
@@ -135,8 +182,6 @@ export class DeliveryResource {
       };
 
     } catch (error) {
-      // ✅ En cas d'erreur, retourner le prix par défaut
-      console.warn('⚠️ Erreur calcul prix via agences:', error.message);
       return {
         success: true,
         price: isSameCommune ? 1500 : 2000,
@@ -150,7 +195,7 @@ export class DeliveryResource {
   }
 
   /**
-   * Vérifier la disponibilité d'une livraison
+   * Vérifier la disponibilité
    */
   async checkAvailability(pickupCommune, clientCommune) {
     try {
@@ -165,11 +210,7 @@ export class DeliveryResource {
         estimatedTime: '30-45 min'
       };
     } catch (error) {
-      return {
-        available: false,
-        agencesCount: 0,
-        error: error.message
-      };
+      return { available: false, agencesCount: 0, error: error.message };
     }
   }
 
@@ -177,24 +218,32 @@ export class DeliveryResource {
    * Récupérer les pays autorisés
    */
   async getCountries() {
-    return this.client.get('/delivery/countries');
+    try {
+      const config = await this.getConfig();
+      return {
+        countries: config.allowedCountries || ['CI'],
+        interCountryEnabled: config.interCountryEnabled || false
+      };
+    } catch (error) {
+      return { countries: ['CI'], interCountryEnabled: false };
+    }
   }
 
   /**
-   * Modes de livraison disponibles
+   * Modes de livraison
    */
   async getDeliveryModes() {
     return {
       modes: [
         { id: 'client_pays', label: 'Client paie la livraison' },
-        { id: 'merchant_pays', label: 'Commerçant paie la livraison (gratuit pour le client)' },
+        { id: 'merchant_pays', label: 'Commerçant paie (gratuit pour le client)' },
         { id: 'threshold', label: 'Gratuit à partir d\'un montant' }
       ]
     };
   }
 
   /**
-   * Devises disponibles
+   * Devises
    */
   async getCurrencies() {
     return {

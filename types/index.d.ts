@@ -26,11 +26,66 @@ export class SendiAPI {
     /**
      * Calcule le prix de livraison
      */
-    calculatePrice(pickupCommune: any, clientCommune: any, options?: {}): Promise<any>;
+    calculatePrice(pickupCommune: any, clientCommune: any, options?: {}): Promise<{
+        success: boolean;
+        price: number;
+        isFree: boolean;
+        currency: any;
+        reason: string;
+        isSameCommune?: undefined;
+        agencesCount?: undefined;
+        bestAgence?: undefined;
+        error?: undefined;
+    } | {
+        success: boolean;
+        price: any;
+        isFree: boolean;
+        currency: any;
+        isSameCommune: boolean;
+        reason: string;
+        agencesCount: any;
+        bestAgence: {
+            id: any;
+            name: any;
+            phone: any;
+            price: any;
+        };
+        error?: undefined;
+    } | {
+        success: boolean;
+        price: number;
+        isFree: boolean;
+        currency: any;
+        isSameCommune: boolean;
+        reason: string;
+        agencesCount: number;
+        bestAgence?: undefined;
+        error?: undefined;
+    } | {
+        success: boolean;
+        price: number;
+        isFree: boolean;
+        currency: any;
+        isSameCommune: boolean;
+        reason: string;
+        error: any;
+        agencesCount?: undefined;
+        bestAgence?: undefined;
+    }>;
     /**
      * Vérifie la disponibilité d'une livraison
      */
-    checkAvailability(pickupCommune: any, clientCommune: any): Promise<any>;
+    checkAvailability(pickupCommune: any, clientCommune: any): Promise<{
+        available: any;
+        agencesCount: any;
+        estimatedTime: string;
+        error?: undefined;
+    } | {
+        available: boolean;
+        agencesCount: number;
+        error: any;
+        estimatedTime?: undefined;
+    }>;
     /**
      * Récupère les agences disponibles
      */

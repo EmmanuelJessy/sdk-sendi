@@ -7,6 +7,9 @@ export class OrdersResource {
     validateOrderData(data: any): void;
     /**
      * Crée une commande
+     *
+     * ✅ Envoie les champs que ton backend attend (createOrder dans publicController.js)
+     * et laisse le backend calculer le prix selon l'agence.
      */
     create(data: any): Promise<any>;
     /**
@@ -14,17 +17,17 @@ export class OrdersResource {
      */
     get(id: any): Promise<any>;
     /**
-     * Liste les commandes avec filtres
+     * Suit une commande
      */
-    list(params?: {}): Promise<any>;
+    track(id: any): Promise<any>;
     /**
      * Annule une commande
      */
     cancel(id: any, reason?: string): Promise<any>;
     /**
-     * Suit une commande
+     * Liste les commandes du commerçant
      */
-    track(id: any): Promise<any>;
+    list(params?: {}): Promise<any>;
     /**
      * Met à jour une commande
      */
@@ -34,8 +37,32 @@ export class OrdersResource {
      */
     confirmDelivery(id: any, codeSecret: any): Promise<any>;
     /**
-     * Calcule le prix avant création
+     * Calcule le prix AVANT création
+     *
+     * ⚠️ Utilise /agences/available (comme le plugin)
+     * via delivery.calculatePrice()
      */
-    calculatePrice(pickupCommune: any, clientCommune: any, options?: {}): Promise<any>;
+    calculatePrice(pickupCommune: any, clientCommune: any, options?: {}): Promise<{
+        success: boolean;
+        price: any;
+        isFree: boolean;
+        currency: any;
+        isSameCommune: boolean;
+        agencesCount: any;
+        bestAgence: {
+            id: any;
+            name: any;
+            phone: any;
+            price: any;
+        };
+    } | {
+        success: boolean;
+        price: number;
+        isFree: boolean;
+        currency: any;
+        isSameCommune: boolean;
+        agencesCount: number;
+        bestAgence?: undefined;
+    }>;
 }
 //# sourceMappingURL=orders.d.ts.map
