@@ -1,6 +1,6 @@
+// src/resources/delivery.js
 import { SendiAPIError } from '../errors.js';
 
-// src/resources/delivery.js
 /**
  * Ressource de gestion des livraisons
  * Correspond aux fonctionnalités du plugin WordPress SendiAPI
@@ -11,84 +11,177 @@ export class DeliveryResource {
   }
 
   /**
-   * Récupérer la configuration de livraison du commerçant
-   * Correspond à: get_option('livraison_api_*') dans WordPress
+   * Récupérer la configuration de livraison
+   * Utilise: GET /delivery/config (existe dans ton backend)
    */
   async getConfig() {
     return this.client.get('/delivery/config');
   }
 
   /**
-   * Mettre à jour la configuration de livraison
-   * Correspond à: update_option('livraison_api_*') dans WordPress
-   */
-  async updateConfig(config) {
-    return this.client.put('/delivery/config', config);
-  }
-
-  /**
    * Récupérer les communes
-   * Correspond à: get_communes() dans WordPress
+   * Utilise: GET /communes (existe dans ton backend)
    */
   async getCommunes(params = {}) {
     const query = new URLSearchParams();
     if (params.country) query.append('country', params.country);
     if (params.search) query.append('search', params.search);
-    if (params.limit) query.append('limit', params.limit);
     const endpoint = query.toString() ? `/communes?${query}` : '/communes';
     return this.client.get(endpoint);
   }
 
   /**
-   * Récupérer les pays autorisés
-   * Correspond à: get_option('livraison_api_allowed_countries') dans WordPress
+   * Récupérer les agences disponibles avec leurs prix
+   * Utilise: GET /agences/available (existe dans ton backend)
+   * 
+   * ⚠️ C'est CETTE route que ton plugin WordPress utilise !
    */
-  async getCountries() {
-    return this.client.get('/delivery/countries');
+  async getAvailableAgences(commune, options = {}) {
+    const params = new URLSearchParams({ commune });
+    if (options.pickupCommune) params.append('pickupCommune', options.pickupCommune);
+    if (options.clientCommune) params.append('clientCommune', options.clientCommune);
+    if (options.countryCode) params.append('countryCode', options.countryCode);
+    return this.client.get(`/agences/available?${params}`);
   }
 
   /**
    * Calculer le prix de livraison
-   * Correspond à: la logique de calcul de prix dans le plugin
+   * 
+   * ⚠️ IMPORTANT: Utilise /agences/available (comme le plugin WordPress)
+   * car /delivery/price n'existe PAS dans ton backend.
    */
   async calculatePrice(pickupCommune, clientCommune, options = {}) {
-    const params = new URLSearchParams({
-      pickupCommune,
-      clientCommune,
-      deliveryMode: options.deliveryMode || 'client_pays',
-      freeThreshold: options.freeThreshold || 0,
-      orderTotal: options.orderTotal || 0,
-      currency: options.currency || 'FCFA'
-    });
-    return this.client.get(`/delivery/price?${params}`);
+    if (!pickupCommune || !clientCommune) {
+      throw new SendiAPIError('pickupCommune et clientCommune requis', 400);
+    }
+
+    const {
+      deliveryMode = 'client_pays',
+      freeThreshold = 0,
+      orderTotal = 0,
+      currency = 'FCFA',
+      countryCode = 'CI'
+    } = options;
+
+    const isSameCommune = pickupCommune.toLowerCase() === clientCommune.toLowerCase();
+
+    // ✅ 1. Si le commerçant paie → gratuit
+    if (deliveryMode === 'merchant_pays') {
+      return {
+        success: true,
+        price: 0,
+        isFree: true,
+        currency,
+        reason: 'merchant_pays'
+      };
+    }
+
+    // ✅ 2. Si threshold ET orderTotal >= freeThreshold → gratuit
+    if (
+      deliveryMode === 'threshold' &&
+      Number(freeThreshold) > 0 &&
+      Number(orderTotal) >= Number(freeThreshold)
+    ) {
+      return {
+        success: true,
+        price: 0,
+        isFree: true,
+        currency,
+        reason: 'threshold_reached'
+      };
+    }
+
+    // ✅ 3. Sinon, utiliser /agences/available (COMME LE PLUGIN)
+    try {
+      const response = await this.getAvailableAgences(pickupCommune, {
+        pickupCommune,
+        clientCommune,
+        countryCode
+      });
+
+      // ✅ Si des agences sont disponibles
+      if (response.agences && response.agences.length > 0) {
+        // Prendre la meilleure agence (celle qui couvre la commune)
+        const bestAgence = response.agences.find(a => a.coversCommune) || response.agences[0];
+        
+        const price = bestAgence.price || (isSameCommune ? 1500 : 2000);
+
+        return {
+          success: true,
+          price: price,
+          isFree: false,
+          currency,
+          isSameCommune,
+          reason: 'agence',
+          agencesCount: response.agences.length,
+          bestAgence: {
+            id: bestAgence.id,
+            name: bestAgence.companyName,
+            phone: bestAgence.phone,
+            price: bestAgence.price
+          }
+        };
+      }
+
+      // ✅ Aucune agence → prix par défaut
+      return {
+        success: true,
+        price: isSameCommune ? 1500 : 2000,
+        isFree: false,
+        currency,
+        isSameCommune,
+        reason: 'default',
+        agencesCount: 0
+      };
+
+    } catch (error) {
+      // ✅ En cas d'erreur, retourner le prix par défaut
+      console.warn('⚠️ Erreur calcul prix via agences:', error.message);
+      return {
+        success: true,
+        price: isSameCommune ? 1500 : 2000,
+        isFree: false,
+        currency,
+        isSameCommune,
+        reason: 'fallback',
+        error: error.message
+      };
+    }
   }
 
   /**
    * Vérifier la disponibilité d'une livraison
    */
   async checkAvailability(pickupCommune, clientCommune) {
-    const params = new URLSearchParams({
-      pickup: pickupCommune,
-      client: clientCommune
-    });
-    return this.client.get(`/delivery/availability?${params}`);
+    try {
+      const response = await this.getAvailableAgences(pickupCommune, {
+        pickupCommune,
+        clientCommune
+      });
+
+      return {
+        available: response.agences && response.agences.length > 0,
+        agencesCount: response.agences?.length || 0,
+        estimatedTime: '30-45 min'
+      };
+    } catch (error) {
+      return {
+        available: false,
+        agencesCount: 0,
+        error: error.message
+      };
+    }
   }
 
   /**
-   * Récupérer les agences disponibles
-   * Correspond à: get_available_agences() dans WordPress
+   * Récupérer les pays autorisés
    */
-  async getAvailableAgences(commune, options = {}) {
-    const params = new URLSearchParams({ commune });
-    if (options.pickupCommune) params.append('pickupCommune', options.pickupCommune);
-    if (options.clientCommune) params.append('clientCommune', options.clientCommune);
-    if (options.limit) params.append('limit', options.limit);
-    return this.client.get(`/delivery/agences?${params}`);
+  async getCountries() {
+    return this.client.get('/delivery/countries');
   }
 
   /**
-   * Récupérer les modes de livraison disponibles
-   * Correspond à: les options de livraison dans le plugin
+   * Modes de livraison disponibles
    */
   async getDeliveryModes() {
     return {
@@ -101,7 +194,7 @@ export class DeliveryResource {
   }
 
   /**
-   * Récupérer les devises disponibles
+   * Devises disponibles
    */
   async getCurrencies() {
     return {

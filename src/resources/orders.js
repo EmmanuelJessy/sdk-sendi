@@ -36,62 +36,44 @@ export class OrdersResource {
         400
       );
     }
-
-    // Validation du pays si présent
-    if (data.clientCountry && data.clientCountry.length !== 2) {
-      throw new SendiAPIError(
-        'Code pays invalide. Utilisez un code ISO à 2 lettres (ex: CI)',
-        400
-      );
-    }
   }
 
   /**
    * Crée une commande
+   * 
+   * ✅ Envoie les champs que ton backend attend (createOrder dans publicController.js)
+   * et laisse le backend calculer le prix selon l'agence.
    */
   async create(data) {
     this.validateOrderData(data);
 
     const orderData = {
-      // Infos client
+      // ✅ Infos client (obligatoires)
       clientName: data.clientName,
       clientPhone: data.clientPhone,
       clientAddress: data.clientAddress,
       clientCommune: data.clientCommune,
-      clientCountry: data.clientCountry || 'CI',
 
-      // Infos pickup
+      // ✅ Infos pickup (obligatoires)
       pickupAddress: data.pickupAddress,
       pickupCommune: data.pickupCommune,
-      pickupCountry: data.pickupCountry || 'CI',
 
-      // Infos commerçant
+      // ✅ Infos commerçant (phonecommercant est obligatoire côté backend)
+      phonecommercant: data.merchantPhone || data.phonecommercant || '',
       merchantName: data.merchantName || '',
-      merchantPhone: data.merchantPhone || '',
+      merchantPhone: data.merchantPhone || data.phonecommercant || '',
       merchantEmail: data.merchantEmail || '',
-      merchantCountry: data.merchantCountry || 'CI',
-      merchantCommune: data.merchantCommune || '',
 
-      // Configuration livraison
-      deliveryMode: data.deliveryMode || 'client_pays',
-      freeThreshold: data.freeThreshold || 0,
-      currency: data.currency || 'FCFA',
+      // ✅ Type de payeur (IMPORTANT pour le dispatch)
+      payerType: data.payerType || 'client',  // 'client' | 'commercant'
+      isFreeDelivery: data.isFreeDelivery || false,
+      freeDeliveryReason: data.freeDeliveryReason || 'none',
 
-      // Inter-pays
-      interCountryEnabled: data.interCountryEnabled || false,
-      allowedCountries: data.allowedCountries || ['CI'],
+      // ✅ Détails de la commande
+      items: data.items || [],
 
-      // Détails commande
-      orderTotal: data.orderTotal || 0,
-      packageWeight: data.packageWeight || 1,
-      packageDescription: data.packageDescription || 'Colis',
-      packageDimensions: data.packageDimensions || null,
-
-      // Options
-      instructions: data.instructions || '',
-      preferredDate: data.preferredDate || null,
-      preferredTime: data.preferredTime || null,
-      isExpress: data.isExpress || false
+      // ✅ Optionnel: forcer une agence spécifique
+      agenceId: data.agenceId || null,
     };
 
     return this.client.post('/order', orderData);
@@ -108,20 +90,13 @@ export class OrdersResource {
   }
 
   /**
-   * Liste les commandes avec filtres
+   * Suit une commande
    */
-  async list(params = {}) {
-    const query = new URLSearchParams();
-    if (params.status) query.append('status', params.status);
-    if (params.limit) query.append('limit', params.limit);
-    if (params.page) query.append('page', params.page);
-    if (params.startDate) query.append('startDate', params.startDate);
-    if (params.endDate) query.append('endDate', params.endDate);
-    if (params.search) query.append('search', params.search);
-    if (params.commune) query.append('commune', params.commune);
-    
-    const endpoint = query.toString() ? `/orders?${query}` : '/orders';
-    return this.client.get(endpoint);
+  async track(id) {
+    if (!id) {
+      throw new SendiAPIError('ID de commande requis', 400);
+    }
+    return this.client.get(`/tracking/${id}`);
   }
 
   /**
@@ -135,13 +110,20 @@ export class OrdersResource {
   }
 
   /**
-   * Suit une commande
+   * Liste les commandes du commerçant
    */
-  async track(id) {
-    if (!id) {
-      throw new SendiAPIError('ID de commande requis', 400);
-    }
-    return this.client.get(`/tracking/${id}`);
+  async list(params = {}) {
+    const query = new URLSearchParams();
+    if (params.status) query.append('status', params.status);
+    if (params.limit) query.append('limit', params.limit);
+    if (params.page) query.append('page', params.page);
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    
+    const endpoint = query.toString() 
+      ? `/commercant/orders?${query}` 
+      : '/commercant/orders';
+    return this.client.get(endpoint);
   }
 
   /**
@@ -168,20 +150,49 @@ export class OrdersResource {
   }
 
   /**
-   * Calcule le prix avant création
+   * Calcule le prix AVANT création
+   * 
+   * ⚠️ Utilise /agences/available (comme le plugin) 
+   * via delivery.calculatePrice()
    */
   async calculatePrice(pickupCommune, clientCommune, options = {}) {
     if (!pickupCommune || !clientCommune) {
       throw new SendiAPIError('Communes requises', 400);
     }
 
-    const params = new URLSearchParams({
-      pickupCommune,
-      clientCommune,
-      deliveryMode: options.deliveryMode || 'client_pays',
-      freeThreshold: options.freeThreshold || 0,
-      orderTotal: options.orderTotal || 0
-    });
-    return this.client.get(`/order/price?${params}`);
+    // ✅ Déléguer à delivery.calculatePrice() qui utilise /agences/available
+    const response = await this.client.get(
+      `/agences/available?commune=${encodeURIComponent(pickupCommune)}&pickupCommune=${encodeURIComponent(pickupCommune)}&clientCommune=${encodeURIComponent(clientCommune)}`
+    );
+
+    const isSameCommune = pickupCommune === clientCommune;
+    const defaultPrice = isSameCommune ? 1500 : 2000;
+
+    if (response.agences && response.agences.length > 0) {
+      const bestAgence = response.agences.find(a => a.coversCommune) || response.agences[0];
+      return {
+        success: true,
+        price: bestAgence.price || defaultPrice,
+        isFree: false,
+        currency: options.currency || 'FCFA',
+        isSameCommune,
+        agencesCount: response.agences.length,
+        bestAgence: {
+          id: bestAgence.id,
+          name: bestAgence.companyName,
+          phone: bestAgence.phone,
+          price: bestAgence.price
+        }
+      };
+    }
+
+    return {
+      success: true,
+      price: defaultPrice,
+      isFree: false,
+      currency: options.currency || 'FCFA',
+      isSameCommune,
+      agencesCount: 0
+    };
   }
 }
