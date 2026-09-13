@@ -1,32 +1,46 @@
-/**
- * Ressource de gestion des livraisons
- * Correspond aux fonctionnalités du plugin WordPress SendiAPI
- */
 export class DeliveryResource {
     constructor(client: any);
     client: any;
     /**
      * Récupérer la configuration de livraison
-     * Utilise: GET /delivery/config (existe dans ton backend)
+     * Retourne: { allowedCountries, interCountryEnabled, communes, ... }
      */
     getConfig(): Promise<any>;
     /**
-     * Récupérer les communes
-     * Utilise: GET /communes (existe dans ton backend)
+     * Récupérer TOUTES les communes (filtrées par pays autorisés)
      */
     getCommunes(params?: {}): Promise<any>;
     /**
-     * Récupérer les agences disponibles avec leurs prix
-     * Utilise: GET /agences/available (existe dans ton backend)
+     * ✅ Récupérer les communes filtrées selon la config
      *
-     * ⚠️ C'est CETTE route que ton plugin WordPress utilise !
+     * Logique (comme le plugin WordPress) :
+     * - Si inter_country DÉSACTIVÉ → communes du pays du commerçant
+     * - Si inter_country ACTIVÉ → communes de tous les pays autorisés
+     */
+    getFilteredCommunes(options?: {}): Promise<{
+        success: boolean;
+        communes: any;
+        total: any;
+        merchantCountry: any;
+        interCountryEnabled: any;
+        allowedCountries: any;
+        error?: undefined;
+    } | {
+        success: boolean;
+        communes: never[];
+        total: number;
+        error: any;
+        merchantCountry?: undefined;
+        interCountryEnabled?: undefined;
+        allowedCountries?: undefined;
+    }>;
+    /**
+     * Récupérer les agences disponibles avec leurs prix
      */
     getAvailableAgences(commune: any, options?: {}): Promise<any>;
     /**
      * Calculer le prix de livraison
-     *
-     * ⚠️ IMPORTANT: Utilise /agences/available (comme le plugin WordPress)
-     * car /delivery/price n'existe PAS dans ton backend.
+     * Utilise /agences/available (comme le plugin)
      */
     calculatePrice(pickupCommune: any, clientCommune: any, options?: {}): Promise<{
         success: boolean;
@@ -75,7 +89,7 @@ export class DeliveryResource {
         bestAgence?: undefined;
     }>;
     /**
-     * Vérifier la disponibilité d'une livraison
+     * Vérifier la disponibilité
      */
     checkAvailability(pickupCommune: any, clientCommune: any): Promise<{
         available: any;
@@ -91,9 +105,12 @@ export class DeliveryResource {
     /**
      * Récupérer les pays autorisés
      */
-    getCountries(): Promise<any>;
+    getCountries(): Promise<{
+        countries: any;
+        interCountryEnabled: any;
+    }>;
     /**
-     * Modes de livraison disponibles
+     * Modes de livraison
      */
     getDeliveryModes(): Promise<{
         modes: {
@@ -102,7 +119,7 @@ export class DeliveryResource {
         }[];
     }>;
     /**
-     * Devises disponibles
+     * Devises
      */
     getCurrencies(): Promise<{
         currencies: {
