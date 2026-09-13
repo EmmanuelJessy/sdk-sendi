@@ -1,4 +1,5 @@
 import { SendiAPIError } from '../errors.js';
+
 // src/resources/agence.js
 export class AgenceResource {
   constructor(client) {
@@ -122,5 +123,30 @@ export class AgenceResource {
       throw new SendiAPIError('ID de notification requis', 400);
     }
     return this.client.post(`/agence/notifications/${notificationId}/read`);
+  }
+
+  // ============================================
+  // ✅ NOUVELLE MÉTHODE : getInfo()
+  // ============================================
+
+  /**
+   * Récupérer les infos publiques d'une agence par son ID
+   * 
+   * @param {string} agenceId - ID de l'agence
+   * @returns {Promise<Object>} - Infos de l'agence
+   * 
+   * @example
+   * const info = await api.agence.getInfo('w0NarEZQ2obLUu6hHJGMnKWgwJj1');
+   * console.log(info.agence.name);      // 'Lucy Express'
+   * console.log(info.agence.phone);     // '+2250748424451'
+   * console.log(info.agence.email);     // 'lucy.express@gmail.com'
+   * console.log(info.agence.address);   // 'Adjamé'
+   * console.log(info.agence.communes);  // ['Cocody', 'Adjamé', ...]
+   */
+  async getInfo(agenceId) {
+    if (!agenceId) {
+      throw new SendiAPIError('ID agence requis', 400);
+    }
+    return this.client.get(`/agence/${agenceId}/info`);
   }
 }
