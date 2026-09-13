@@ -1,6 +1,6 @@
 {
   "name": "sendi-api",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "type": "module",
   "description": "SDK officiel pour l'API Sendi - Livraison en Afrique",
   "main": "dist/sendi-api.cjs.js",
